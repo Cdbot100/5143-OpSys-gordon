@@ -6,10 +6,12 @@
 day=$(date +'%Y-%m-%d')
 #formatted day value
 name=$(basename $1)
+file="${name%.*}"
+ext="${name##*.}"
 #basename of file without pathname
-cp $1 ./$name$day
+cp $1 ./$file$day.$ext
 #copy from source to this directory, append date to the rear of the file name
-echo "Filename is:./"$name$day
+echo "Filename is:./"$file$day.$ext
 #report name of file
 
 
