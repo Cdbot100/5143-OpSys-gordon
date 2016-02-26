@@ -18,8 +18,16 @@ class parserManager(object):
     #parse the line and split into parts
     def parse(self,cmd):
         self.parts = cmd.split(" ")
+        #self.findflags()
         return self.parts
-    
+
+    def findflags(self):
+        for words in self.parts:
+            if '-' in words:
+                for letters in words:
+                   if letters != '-':
+                      self.flags += letters
+ 
 #handles our commands and command history and desides what to run
 class commandManager(parserManager):
     
@@ -43,14 +51,17 @@ class commandManager(parserManager):
     #desides which command to run returns the command string
     def run_command(self,cmd):
         self.command = cmd
+        self.flags = []
         self.command = self.parse(self.command)
         self.handler(cmd)        #Handle input
         return self.command
     
     #checks for valid input and handles it. returns nothing
     def handler(self,cmd):
+        cmdlist = ["ls", "cat", "chmod", "cd", "history", "mv", "rm", "wc", "exit", "quit", "help"]
         if cmd:
-            self.push_command(cmd)
+            self.findflags()
+            self.push_command(cmd)      #add cmd to history if its not an empty string     
             if self.parts[0] == "ls" :
                 currentpath=os.getcwd()
                 self.ls(currentpath)
@@ -62,7 +73,11 @@ class commandManager(parserManager):
                     print("Command 'cat' requires a file")
 
             elif self.parts[0] == "chmod":
-                pass
+                if len(self.parts) > 2:
+                    self.chmod(self.parts[1],self.parts[2])
+                else:
+                    print("Command 'chmod' requires two arguments")
+                
             elif self.parts[0] == "cd":
                 if len(self.parts) >1:
                     self.cd(self.parts[1])
@@ -73,7 +88,7 @@ class commandManager(parserManager):
                 self.history()
             
             elif self.parts[0] == "mv":
-                if len(self.parts) >=2:
+                if len(self.parts) > 2:
                     self.mv(self.parts[1],self.parts[2])
                 else:
                     print("Command 'mv' requires a two arguments")
@@ -100,17 +115,35 @@ class commandManager(parserManager):
                 print("...no")
 
             else:
+                suggestions = []
                 outmsg= "Unknown Command: '" + cmd +"'"
+                if self.parts not in cmdlist:
+                    for words in cmdlist:
+                        for first in words[0]:
+                            if self.parts[0][0] == first: 
+                                suggestions.append(words)
+                if suggestions:
+                    outmsg+= "\nMaybe: "
+                    for sug in suggestions:
+                        outmsg+= str(sug) + " "
                 print(outmsg)
         else:
             print "no input recieved!"
 
    #ls function
     def ls(self,dir):
-        files = os.listdir(os.curdir)  #files and directories
-        #files = filter(os.path.isfile, os.listdir( os.curdir ) )  # files only
-        #files = [ f for f in os.listdir( os.curdir ) if os.path.isfile(f) ] #list comprehension version.        files = os.listdir(os.curdir)
-        print(files)
+        flaglist = ["l", "s", "a", "m", "c"]
+        if self.flags:
+            for letters in self.flags:
+                if letters in flaglist:
+                    print(letters)
+                elif 'l' in self.flags:
+                    print ("unknown flag", letters)     
+        else:
+            files = os.listdir(os.curdir)  #files and directories
+            #files = filter(os.path.isfile, os.listdir( os.curdir ) )  # files only
+            #files = [ f for f in os.listdir( os.curdir ) if os.path.isfile(f) ] #list comprehension version.        files = os.listdir(os.curdir)
+            print(files)
     
     #cat Function
     def cat(self,file):
@@ -122,9 +155,19 @@ class commandManager(parserManager):
             print(outmsg)
 
     #chmod
-    def chmod():
-        pass
-
+    def chmod(self,file,perm):
+        try:
+            temp= perm.zfill(4)       #add leading 0
+            temp= int(temp,8)         #cast to octal
+        except ValueError:
+            print("invalid octal value")
+        try:
+            os.chmod(file,temp)
+            print("changed file permissions to " , perm) 
+        except OSError:
+            outmsg= "Could not change file: '" + file +"'"
+            print(outmsg)
+        
     #cd
     def cd(self,path):
         try:
@@ -158,7 +201,7 @@ class commandManager(parserManager):
 
     #wc
     def wc(self,file):
-        os.system("wc -l " +file)
+        os.system("wc -l " +file)    #fix this lol
 
     #print the exit message and quit, return nothing
     def quit(self):
@@ -174,7 +217,7 @@ class driver(object):
     def runShell(self):
         while True:
             try:
-                currentpath=os.getcwd() + "/>"
+                currentpath = os.getcwd() + "/>"
                 self.input = raw_input(currentpath)         # get command
                 parts = self.commands.run_command(self.input)
             except KeyboardInterrupt:
